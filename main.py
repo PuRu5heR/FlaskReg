@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, flash, redirect
+from flask import Flask, render_template, request, flash, redirect, send_from_directory
 
 import users
 from users import Users
@@ -78,15 +78,16 @@ def homepage():
     return render_template("homepage.html", user=user)
 
 
-@app.route("/files")
+@app.route("/files", defaults={'req_path': ''})
+@app.route("/files/<path:req_path>")
 @login_required
-def files():
-    D = app.root_path + "\\files\\" + str(current_user.get_user()[1])
+def files(req_path):
+    D = os.path.join(app.root_path, "files", str(current_user.get_user()[1]), req_path)
     directory = os.listdir(D)
     out = ""
     for file in directory:
         print(file)
-        out += "<a href=http://192.168.58.2:5000/download/" + file + ">" + file + "</a><br>"
+        out += "<a href=/download/" + file + ">" + file + "</a><br>"
 
     out += "<a href=/homepage>Home page</a>"
     return out
@@ -94,7 +95,8 @@ def files():
 
 @app.route("/download/<file>")
 def download(file):
-    D = app.root_path + "\\files\\" + str(current_user.get_user()[1] + "\\")
+    print(app.root_path, str(current_user.get_user()[1]))
+    D = os.path.join(app.root_path, "files", str(current_user.get_user()[1]))
     print(D)
     return send_from_directory(directory=D, path=file)
 
@@ -118,12 +120,12 @@ def upload():
     if request.method == "POST":
         try:
             request.files['file'].save(
-                os.path.join("files\\" + str(current_user.get_user()[1]), request.files['file'].filename))
+                os.path.join("files", str(current_user.get_user()[1]), request.files['file'].filename))
         except FileNotFoundError:
             print(current_user.get_user()[1])
-            os.mkdir("files\\" + str(current_user.get_user()[1]))
+            os.mkdir(os.path.join("files", str(current_user.get_user()[1])))
             request.files['file'].save(
-                os.path.join("files\\" + str(current_user.get_user()[1]), request.files['file'].filename))
+                os.path.join("files", str(current_user.get_user()[1]), request.files['file'].filename))
         import qrcode
         QR = qrcode.make("http://192.168.58.2:5000/download/" + request.files['file'].filename)
         QR.save("static\\images\\qr.png")
@@ -133,4 +135,4 @@ def upload():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="localhost", port=8080, debug=True)
